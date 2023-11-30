@@ -1,5 +1,4 @@
-javascript
-// usuario.js
+
 const express = require('express');
 const router = express.Router();
 
@@ -28,7 +27,6 @@ router.delete('/usuarios/:id', (req, res) => {
   // Implementação do código para excluir as informações de um usuário específico do banco de dados
 });
 
-// Outras interações que podem ser necessárias na sua aplicação
 
 module.exports = router;
 
