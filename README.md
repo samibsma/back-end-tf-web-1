@@ -17,5 +17,8 @@ Esse site é um cardápio para o refeitório do IF, nele os alunos conseguem vis
 
 
 
-<a href='db/modelologico.png'>MODELO LOGICO</a>
+<a href='db/modelologico.png'>MODELO LÓGICO</a>
 
+
+
+<a href='db/DDl.sql'>MODELO FÍSICO</a>
