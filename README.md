@@ -28,7 +28,7 @@ As ferramentas BrModelo e elephantSql(extensão do postgress online e gratis) fo
 - **Rota:** `https://back-end-tf-web-three.vercel.app/usuarios/{id}`
 - **Descrição:** Retorna as informações de um usuário específico com base no ID fornecido.
 - **Observação:** É necessario que o usuário esteja cadastrado e logado.
-### Atualizar Usuário por ID (PUT ou PATCH)
+### Atualizar Usuário por ID (PUT)
 
 - **Rota:** `https://back-end-tf-web-three.vercel.app/usuarios/{id}`
 - **Descrição:** Atualiza as informações de um usuário específico com base no ID fornecido.
