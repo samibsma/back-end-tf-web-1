@@ -1,10 +1,84 @@
 import { Router } from "express";
 import pool from "../db/conexao.js";
+import jwt from "jsonwebtoken";
+import infosAutenticacao from "../middlewares/infosAutenticacao.js";
+import autenticado from "../middlewares/autenticado.js";
 
 const rotasUsuarios = Router();
+const { sign } = jwt;
+
+// Rota para criar um usuário.
+rotasUsuarios.post("/usuarios", async (request, response) => {
+  try {
+    const { Email, Senha, Nome } = request.body;
+    
+    if (!Email || !Senha || !Nome) {
+      response
+      .status(400)
+      .json({ mensagem: "Todos os campos são obrigatórios" });
+      return;
+    }
+    
+    const usuario = [Email, Senha, Nome];
+    const sql =
+    "INSERT INTO usuarios (Email, Senha, Nome) VALUES ($1, $2, $3) RETURNING *";
+    const resultado = await pool.query(sql, usuario);
+    
+    response.status(201).json({
+      mensagem: "Usuário criado com sucesso",
+      usuarioCriado: resultado.rows[0],
+    });
+  } catch (erro) {
+    console.error("Erro ao criar usuário:", erro);
+    response.status(500).json("Erro interno do servidor");
+  }
+});
+
+// Rota para logar um usuario
+rotasUsuarios.post("/login",async (request, response) => {
+  const { Email, Senha } = request.body;
+
+  if (!Email || !Senha) {
+    return response
+      .status(400)
+      .json({ mensagem: "Email e senha são obrigatórios" });
+  }
+
+  const sql = "SELECT * FROM usuarios WHERE Email = $1";
+  const user = await pool.query(sql, [Email]);
+  if (!user.rows[0]) {
+    return response
+      .status(400)
+      .json({ mensagem: "Usuario não encontrado no banco de dados" });
+  }
+
+  // Desistruturando usuario que chega do banco de dados.
+  const { id, email, senha, nome } = user.rows[0];
+
+  //Verificando se as informações informadas são iguais as do banco de dados.
+  if (email !== Email || senha !== Senha) {
+    return response
+      .status(401)
+      .json({ mensagem: "Informações invalidas, Email ou Senha incorreto" });
+  }
+
+  const token = sign({}, infosAutenticacao.jwt.secret, {
+    subject: String(id),
+    expiresIn: infosAutenticacao.jwt.expiracao,
+  });
+
+  //Retornando usuário sem a senha.
+  return response.json({
+    user: {
+      nome: nome,
+      email: email,
+    },
+    token,
+  });
+});
 
 // Rota para listar todos os usuarios.
-rotasUsuarios.get("/usuarios", async (request, response) => {
+rotasUsuarios.get("/usuarios", autenticado, async (request, response) => {
   try {
     const sql = "SELECT * FROM usuarios;";
     const resultado = await pool.query(sql);
@@ -21,7 +95,7 @@ rotasUsuarios.get("/usuarios", async (request, response) => {
 });
 
 // Rota para buscar o usuario por id.
-rotasUsuarios.get("/usuarios/:id", async (request, response) => {
+rotasUsuarios.get("/usuarios/:id", autenticado,async (request, response) => {
   try {
     const id = request.params.id;
     const sql = "SELECT * FROM usuarios WHERE id = $1;";
@@ -40,36 +114,10 @@ rotasUsuarios.get("/usuarios/:id", async (request, response) => {
   }
 });
 
-// Rota para criar um usuário.
-rotasUsuarios.post("/usuarios", async (request, response) => {
-  try {
-    const { Email, Senha, Nome } = request.body;
-
-    if (!Email || !Senha || !Nome) {
-      response
-        .status(400)
-        .json({ mensagem: "Todos os campos são obrigatórios" });
-      return;
-    }
-
-    const usuario = [Email, Senha, Nome];
-    const sql =
-      "INSERT INTO usuarios (Email, Senha, Nome) VALUES ($1, $2, $3) RETURNING *";
-    const resultado = await pool.query(sql, usuario);
-
-    response.status(201).json({
-      mensagem: "Usuário criado com sucesso",
-      usuarioCriado: resultado.rows[0],
-    });
-  } catch (erro) {
-    console.error("Erro ao criar usuário:", erro);
-    response.status(500).json("Erro interno do servidor");
-  }
-});
 
 // Rota para deleter um usuário pelo id.
 
-rotasUsuarios.delete("/usuarios/:id", async (request, response) => {
+rotasUsuarios.delete("/usuarios/:id", autenticado, async (request, response) => {
   try {
     const id = request.params.id;
     const sql = "DELETE FROM usuarios WHERE id = $1 RETURNING *";
@@ -90,7 +138,7 @@ rotasUsuarios.delete("/usuarios/:id", async (request, response) => {
 });
 
 // Rota para atualizar um usuário pelo id.
-rotasUsuarios.put("/usuarios/:id", async (request, response) => {
+rotasUsuarios.put("/usuarios/:id",autenticado, async (request, response) => {
   try {
     const id = request.params.id;
     const { Email, Senha, Nome } = request.body;
@@ -113,50 +161,6 @@ rotasUsuarios.put("/usuarios/:id", async (request, response) => {
   }
 });
 
-// Função para verificar se as informações estão iguais as informações do banco de dados
-const verificarAutenticacao = async (request, response, next) => {
-  try {
-    const { Email, Senha } = request.body;
-
-    if (!Email || !Senha) {
-      return response
-        .status(400)
-        .json({ mensagem: "Email e senha são obrigatórios" });
-    }
-
-    // Sql para verificar se as informações do usuário existem no banco de dados
-    const sql = "SELECT * FROM usuarios WHERE Email = $1 AND Senha = $2";
-    const resultado = await pool.query(sql, [Email, Senha]);
-
-    if (resultado.rows[0]) {
-      // Usuário autenticado
-      request.usuarioAutenticado = resultado.rows[0];
-      //Next para passar para a rota.
-      next();
-    } else {
-      // Usuário não autenticado
-      return response.status(401).json({ mensagem: "Credenciais inválidas" });
-    }
-  } catch (erro) {
-    console.error("Erro ao verificar autenticação:", erro);
-    return response.status(500).json({ mensagem: "Erro interno do servidor" });
-  }
-};
-
-// Rota para logar um usuario
-rotasUsuarios.post("/login", verificarAutenticacao, (request, response) => {
-  // Usuário autenticado(verificado pela função)
-  const usuarioAutenticado = request.usuarioAutenticado;
-
-  // Retornando informações do usuário autenticado.
-  response.status(200).json({
-    mensagem: "Login bem-sucedido",
-    usuario: {
-      id: usuarioAutenticado.id,
-      Email: usuarioAutenticado.Email,
-      Nome: usuarioAutenticado.Nome,
-    },
-  });
-});
 
 export default rotasUsuarios;
+
