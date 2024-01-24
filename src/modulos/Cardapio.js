@@ -1,48 +1,11 @@
 import { Router } from "express";
 import pool from "../db/conexao.js";
+import autenticado from "../middlewares/autenticado.js";
 
 const rotasCardapio = Router();
 
-// Rota para pesquisar todos cardapios da tabela.
-rotasCardapio.get("/cardapio", async (request, response) => {
-  try {
-    const sql = "SELECT * FROM cardapio;";
-    const resultado = await pool.query(sql);
-
-    // Verificando se existe algum cardapio na tabela.
-    if (resultado.rows.length > 0) {
-      response.status(200).json(resultado.rows);
-    } else {
-      response.status(404).json("Nenhum cardápio encontrado");
-    }
-  } catch (erro) {
-    console.error("Erro ao buscar cardápios:", erro);
-    response.status(500).json("Erro interno do servidor");
-  }
-});
-
-// Rota para pesquisar cardapios da tabela por Id.
-rotasCardapio.get("/cardapio/:id", async (request, response) => {
-  try {
-    const id = request.params.id;
-    const sql = "SELECT * FROM cardapio WHERE id = $1;";
-    const resultado = await pool.query(sql, [id]);
-
-    if (resultado) {
-      response.status(200).json(resultado.rows[0]);
-    } else {
-      response.status(404).json({
-        mensagem: "Nenhum cardápio encontrado com o ID fornecido",
-      });
-    }
-  } catch (erro) {
-    console.error("Erro ao buscar cardápio por ID:", erro);
-    response.status(500).json("Erro interno do servidor");
-  }
-});
-
-// Rota para criar um cardápio
-rotasCardapio.post("/cardapio", async (request, response) => {
+// Rota para criar um cardápio, só o administrador tera acesso, pois precisa está logado.
+rotasCardapio.post("/cardapio", autenticado, async (request, response) => {
   try {
     const { Dia_da_semana, Itens_Cafe_Da_Manha, Itens_Almoco, Itens_Jantar } =
       request.body;
@@ -77,10 +40,50 @@ rotasCardapio.post("/cardapio", async (request, response) => {
   }
 });
 
-// Rota para deleter um cardapio pelo id.
-rotasCardapio.delete("/cardapio/:id", async (request, response) => {
+// Rota livre para pesquisar todos cardapios da tabela, para os alunos vizualizarem, não necessita esta logado.
+rotasCardapio.get("/cardapio", async (request, response) => {
+  try {
+    const sql = "SELECT * FROM cardapio;";
+    const resultado = await pool.query(sql);
+
+    // Verificando se existe algum cardapio na tabela.
+    if (resultado.rows.length > 0) {
+      response.status(200).json(resultado.rows);
+    } else {
+      response.status(404).json("Nenhum cardápio encontrado");
+    }
+  } catch (erro) {
+    console.error("Erro ao buscar cardápios:", erro);
+    response.status(500).json("Erro interno do servidor");
+  }
+});
+
+// Rota para pesquisar cardapios da tabela por Id, para os alunos vizualizarem, não necessita esta logado.
+rotasCardapio.get("/cardapio/:id", async (request, response) => {
   try {
     const id = request.params.id;
+    const sql = "SELECT * FROM cardapio WHERE id = $1;";
+    const resultado = await pool.query(sql, [id]);
+
+    if (resultado) {
+      response.status(200).json(resultado.rows[0]);
+    } else {
+      response.status(404).json({
+        mensagem: "Nenhum cardápio encontrado com o ID fornecido",
+      });
+    }
+  } catch (erro) {
+    console.error("Erro ao buscar cardápio por ID:", erro);
+    response.status(500).json("Erro interno do servidor");
+  }
+});
+
+
+// Rota para deleter um cardapio pelo id, só o administrador tera acesso, pois precisa está logado..
+rotasCardapio.delete("/cardapio/:id",autenticado, async (request, response) => {
+  try {
+    const id = request.params.id;
+
     // Usando o RETURNING * para facilitar na hora de retornar o cardapio excluido.
     const sql = "DELETE FROM cardapio WHERE id = $1 RETURNING *;";
     const resultado = await pool.query(sql, [id]);
@@ -102,8 +105,8 @@ rotasCardapio.delete("/cardapio/:id", async (request, response) => {
   }
 });
 
-// Rota para atualizar um cardapio pelo id.
-rotasCardapio.put("/cardapio/:id", async (request, response) => {
+// Rota para atualizar um cardapio pelo id, só o administrador tera acesso, pois precisa está logado..
+rotasCardapio.put("/cardapio/:id", autenticado, async (request, response) => {
   try {
     const id = request.params.id;
     const { Dia_da_semana, Itens_Cafe_Da_Manha, Itens_Almoco, Itens_Jantar } =
@@ -136,3 +139,4 @@ rotasCardapio.put("/cardapio/:id", async (request, response) => {
 });
 
 export default rotasCardapio;
+
