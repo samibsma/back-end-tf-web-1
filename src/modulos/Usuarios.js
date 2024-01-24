@@ -46,12 +46,7 @@ rotasUsuarios.post("/login",async (request, response) => {
 
   const sql = "SELECT * FROM usuarios WHERE Email = $1";
   const user = await pool.query(sql, [Email]);
-  if (!user.rows[0]) {
-    return response
-      .status(400)
-      .json({ mensagem: "Usuario não encontrado no banco de dados" });
-  }
-
+  
   // Desistruturando usuario que chega do banco de dados.
   const { id, email, senha, nome } = user.rows[0];
 
